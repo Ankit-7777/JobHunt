@@ -127,6 +127,8 @@ class ApplicationSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
+        if not hasattr(request.user, 'employee'):
+            raise serializers.ValidationError("User does not have an associated employee.")
         validated_data['employee'] = request.user.employee
         return super().create(validated_data)
 

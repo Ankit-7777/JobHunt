@@ -13,6 +13,8 @@ from .pagination import MyPageNumberPagination
 from  .permissions import IsRecruiterOrSuperadmin, IsEmployeeRecruiterOrSuperadmin
 from django.shortcuts import get_object_or_404
 from rest_framework.exceptions import PermissionDenied
+from .tasks import send_application_notification, send_application_status_update_notification, send_welcome_email
+
 
 class UserAuthAPIView(APIView):
     permission_classes = [AllowAny]
@@ -31,7 +33,7 @@ class UserAuthAPIView(APIView):
         if serializer.is_valid():
             user = serializer.save()
             login(request, user)
-            # send_welcome_email.delay(user.email, user.first_name, user.role)
+            send_welcome_email.delay(user.email, user.name, user.role)
             token = get_tokens_for_user(user)
             
             return Response({
@@ -157,7 +159,13 @@ class ApplicationViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data, context={'request': request})
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        application = serializer.save()
+        job = application.job
+        recruiter_email = job.recruiter.user.email
+        job_title = job.title
+        applicant_name = request.user.name  
+        send_application_notification.delay(recruiter_email, job_title, applicant_name)
+
         return Response({
             "message": "Application created successfully.",
             "data": serializer.data
@@ -181,21 +189,30 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response({
-            "message": "Application updated successfully.",
-            "data": serializer.data
-        })
 
-    def partial_update(self, request, *args, **kwargs):
-        instance = self.get_object()
+        if request.user.role == 'recruiter':
+            if 'status' not in request.data:
+                return Response({
+                    "detail": "Recruiters can only change the application status."
+                }, status=status.HTTP_403_FORBIDDEN)
+
         serializer = self.get_serializer(instance, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+
+        if request.user.role == 'recruiter' and 'status' in request.data:
+            new_status = request.data['status']
+            instance.update_status(new_status, user=request.user)
+        else:
+            application = serializer.save()
+
+        if request.user.role == 'recruiter' and 'status' in request.data:
+            employee_email = instance.employee.user.email
+            job_title = instance.job.title
+            application_id = instance.id 
+            send_application_status_update_notification.delay(employee_email, new_status, job_title)
+
         return Response({
-            "message": "Application partially updated successfully.",
+            "message": "Application updated successfully.",
             "data": serializer.data
         })
 
