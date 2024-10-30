@@ -21,11 +21,37 @@ class IsRecruiterOrSuperadmin(BasePermission):
             return obj.recruiter.user == request.user
         return request.user.is_superuser
 
+# class IsEmployeeRecruiterOrSuperadmin(BasePermission):
+#     """
+#     Custom permission to allow:
+#     - Employees to create, view, update, and delete their own applications.
+#     - Recruiters to view applications for jobs they've posted.
+#     - Superadmins to view and delete applications only.
+#     """
+
+#     def has_permission(self, request, view):
+#         return request.user.is_authenticated
+
+#     def has_object_permission(self, request, view, obj):
+#         if request.user.is_superuser:
+#             if request.method in ('GET', 'DELETE'):
+#                 return True
+#             return False
+
+#         if request.user.role == 'employee':
+#             if request.method in ('GET', 'PUT', 'PATCH', 'DELETE'):
+#                 return obj.employee.user == request.user
+        
+#         elif request.user.role == 'recruiter':
+#             if request.method == 'GET':
+#                 return obj.job.recruiter.user == request.user
+#         return False
+
 class IsEmployeeRecruiterOrSuperadmin(BasePermission):
     """
     Custom permission to allow:
     - Employees to create, view, update, and delete their own applications.
-    - Recruiters to view applications for jobs they've posted.
+    - Recruiters to view applications for jobs they've posted and update status.
     - Superadmins to view and delete applications only.
     """
 
@@ -45,5 +71,8 @@ class IsEmployeeRecruiterOrSuperadmin(BasePermission):
         elif request.user.role == 'recruiter':
             if request.method == 'GET':
                 return obj.job.recruiter.user == request.user
-        return False
+            elif request.method in ('PUT', 'PATCH'):
+                # Allow changing only the 'status' field for recruiters
+                return obj.job.recruiter.user == request.user
 
+        return False

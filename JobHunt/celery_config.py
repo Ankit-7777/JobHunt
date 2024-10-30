@@ -4,10 +4,10 @@ from celery import Celery
 import os
 
 # Set the default Django settings module for the 'celery' program.
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'TalentHunt.settings')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'JobHunt.settings')
 
 # Create a Celery app instance
-app = Celery('TalentHunt')
+app = Celery('JobHunt')
 
 # Load task modules from all registered Django app configs.
 app.config_from_object('django.conf:settings', namespace='CELERY')

@@ -38,7 +38,7 @@ class EmployeeAdmin(admin.ModelAdmin):
 
 
 class JobAdmin(admin.ModelAdmin):
-    list_display = ('title', 'recruiter', 'location', 'job_type', 'salary', 'posted_date', 'application_deadline')
+    list_display = ( 'id','title', 'recruiter', 'location', 'job_type', 'salary', 'posted_date', 'application_deadline')
     search_fields = ('title', 'recruiter__user__email', 'location', 'job_type')
     list_filter = ('job_type', 'posted_date', 'application_deadline')
     ordering = ('-posted_date',)
